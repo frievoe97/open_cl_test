@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(untitled10)
+project(open_cl_test)
 
 # Specify OpenCV directory
 set(OpenCV_DIR "/Users/aleksey/build_opencv")
@@ -17,11 +17,11 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework OpenCL")
 set(OPENCL_CLHPP_INCLUDE_DIR "/usr/local/opt/opencl-clhpp-headers/include")
 
 # Add executable
-add_executable(untitled10 main.cpp)
+add_executable(open_cl_test main.cpp)
 
 # Link libraries including OpenCV, MPI, OpenMP, and OpenCL framework
-target_link_libraries(untitled10 PUBLIC ${OpenCV_LIBS} "-framework OpenCL")
+target_link_libraries(open_cl_test PUBLIC ${OpenCV_LIBS} "-framework OpenCL")
 
 
 # Include directories for OpenCV, MPI, OpenMP, OpenCL, and clhpp headers
-target_include_directories(untitled10 PUBLIC ${OpenCV_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} ${OPENCL_CLHPP_INCLUDE_DIR} .)
+target_include_directories(open_cl_test PUBLIC ${OpenCV_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} ${OPENCL_CLHPP_INCLUDE_DIR} .)
