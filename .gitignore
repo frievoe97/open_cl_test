@@ -1,1 +1,7 @@
 /output/
+/build/
+visualize/venv/
+visualize/__pycache__/
+*.pyc
+*.pyo
+*.DS_Store

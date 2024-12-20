@@ -29,4 +29,3 @@ target_link_libraries(open_cl_test PUBLIC ${OpenCV_LIBS} "-framework OpenCL")
 # Include directories for OpenCV, MPI, OpenMP, OpenCL, and clhpp headers
 # target_include_directories(open_cl_test PUBLIC ${OpenCV_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} ${OPENCL_CLHPP_INCLUDE_DIR} .)
 target_include_directories(open_cl_test PUBLIC /opt/homebrew/include ${OpenCV_INCLUDE_DIRS} ${OPENCL_INCLUDE_DIRS} ${OPENCL_CLHPP_INCLUDE_DIR} .)
-

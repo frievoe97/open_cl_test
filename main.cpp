@@ -26,6 +26,10 @@
 #include <fstream>
 #include <algorithm>
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
+
 #if __has_include(<CL/opencl.hpp>)
     #include <CL/opencl.hpp>
 #elif __has_include(<OpenCL/opencl.h>)
