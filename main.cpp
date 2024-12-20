@@ -25,7 +25,14 @@
 #include <string>
 #include <fstream>
 #include <algorithm>
-#include <CL/opencl.hpp>
+
+#if __has_include(<CL/opencl.hpp>)
+    #include <CL/opencl.hpp>
+#elif __has_include(<OpenCL/opencl.h>)
+    #include <OpenCL/opencl.h>
+#else
+    #error "No suitable OpenCL header found. Please install OpenCL or adjust include paths."
+#endif
 
 /**
  * @brief Checks for OpenCL errors and prints an error message if necessary.
