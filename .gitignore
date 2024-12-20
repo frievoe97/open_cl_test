@@ -1,6 +1,7 @@
 /output/
 /build/
 visualize/venv/
+visualize/plots/
 visualize/__pycache__/
 *.pyc
 *.pyo
