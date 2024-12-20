@@ -1,5 +1,8 @@
 # OpenCL Image Processing
 
+[Presentation](https://docs.google.com/presentation/d/1Z8SyrqoCZnVNGRkztIShWnqlWQ7qNYKHRWdw1-h4fnI/edit#slide=id.g3216690245b_2_47)
+[Paper](https://www.overleaf.com/7599688643npqdfzyksmfq#fa8dc5)
+
 ## Overview
 
 This program processes images using three modes of parallelization:
