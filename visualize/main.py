@@ -31,9 +31,8 @@ def analyze_csv():
 
     # Iterate over unique input files
     for input_file in df["InputFile"].unique():
-        full_path = os.path.join("..", input_file)  # Adjust path to go one folder up
         try:
-            with Image.open(full_path) as img:
+            with Image.open(input_file) as img:
                 width, height = img.size
                 total_pixels = width * height
                 image_sizes[input_file] = {
