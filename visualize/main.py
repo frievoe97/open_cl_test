@@ -40,9 +40,9 @@ def analyze_csv():
                     "total_pixels": total_pixels
                 }
         except FileNotFoundError:
-            print(f"Image file not found: {full_path}")
+            print(f"Image file not found: {input_file}")
         except Exception as e:
-            print(f"Error loading image {full_path}: {e}")
+            print(f"Error loading image {input_file}: {e}")
 
     # Add total pixels to the DataFrame
     df["TotalPixels"] = df["InputFile"].map(lambda x: image_sizes[x]["total_pixels"] if x in image_sizes else None)

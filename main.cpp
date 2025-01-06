@@ -98,13 +98,67 @@ __kernel void dilate(__global unsigned char* inputImage, __global unsigned char*
 }
 )";
 
+const char* kernelSourceYCbCr2D = R"(
+__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height) {
+    int x = get_global_id(0); // x-Koordinate
+    int y = get_global_id(1); // y-Koordinate
+
+    if (x >= width || y >= height) return; // Out-of-bounds Check
+
+    int idx = (y * width + x) * 3;
+
+    float R = inputImage[idx] / 255.0f;
+    float G = inputImage[idx + 1] / 255.0f;
+    float B = inputImage[idx + 2] / 255.0f;
+
+    unsigned char Y = (unsigned char)(16 + (65.481 * R + 128.553 * G + 24.966 * B));
+    unsigned char Cb = (unsigned char)(128 + (-37.797 * R - 74.203 * G + 112.0 * B));
+    unsigned char Cr = (unsigned char)(128 + (112.0 * R - 93.786 * G - 18.214 * B));
+
+    outputImage[idx] = Y;
+    outputImage[idx + 1] = Cb;
+    outputImage[idx + 2] = Cr;
+}
+)";
+
+const char* kernelSourceDilation2D = R"(
+__kernel void dilate(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height) {
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if (x >= width || y >= height) return;
+
+    int idx = (y * width + x) * 3;
+    unsigned char maxVal = 0;
+
+    for (int dy = -3; dy <= 3; dy++) {
+        for (int dx = -3; dx <= 3; dx++) {
+            int nx = x + dx;
+            int ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                int neighborIdx = (ny * width + nx) * 3;
+                maxVal = max(maxVal, inputImage[neighborIdx]);
+            }
+        }
+    }
+
+    outputImage[idx] = maxVal;
+    outputImage[idx + 1] = maxVal;
+    outputImage[idx + 2] = maxVal;
+}
+)";
+
 
 cl_context context = nullptr;
 cl_command_queue queue = nullptr;
 cl_program programYCbCr = nullptr;
+cl_program programYCbCr2D = nullptr;
 cl_program programDilation = nullptr;
+cl_program programDilation2D = nullptr;
 cl_kernel kernelYCbCr = nullptr;
+cl_kernel kernelYCbCr2D = nullptr;
 cl_kernel kernelDilation = nullptr;
+cl_kernel kernelDilation2D = nullptr;
 
 /**
  * @brief Initializes OpenCL context, command queue, and compiles kernels.
@@ -134,6 +188,14 @@ void initializeOpenCL() {
     kernelYCbCr = clCreateKernel(programYCbCr, "rgb_to_ycbcr", &ret);
     checkError(ret, "clCreateKernel YCbCr");
 
+    // Compile 2D YCbCr program
+    programYCbCr2D = clCreateProgramWithSource(context, 1, &kernelSourceYCbCr2D, NULL, &ret);
+    checkError(ret, "clCreateProgramWithSource 2D YCbCr");
+    ret = clBuildProgram(programYCbCr2D, 1, &device, NULL, NULL, NULL);
+    checkError(ret, "clBuildProgram 2D CbCr");
+    kernelYCbCr2D = clCreateKernel(programYCbCr2D, "rgb_to_ycbcr", &ret);
+    checkError(ret, "clCreateKernel 2D YCbCr");
+
     // Compile Dilation program
     programDilation = clCreateProgramWithSource(context, 1, &kernelSourceDilation, NULL, &ret);
     checkError(ret, "clCreateProgramWithSource Dilation");
@@ -141,6 +203,14 @@ void initializeOpenCL() {
     checkError(ret, "clBuildProgram Dilation");
     kernelDilation = clCreateKernel(programDilation, "dilate", &ret);
     checkError(ret, "clCreateKernel Dilation");
+
+    // Compile Dilation program
+    programDilation2D = clCreateProgramWithSource(context, 1, &kernelSourceDilation2D, NULL, &ret);
+    checkError(ret, "clCreateProgramWithSource2D Dilation");
+    ret = clBuildProgram(programDilation2D, 1, &device, NULL, NULL, NULL);
+    checkError(ret, "clBuildProgram 2D Dilation");
+    kernelDilation2D = clCreateKernel(programDilation2D, "dilate", &ret);
+    checkError(ret, "clCreateKernel2D Dilation");
 
     size_t maxLocalSize;
     clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &maxLocalSize, NULL);
@@ -157,12 +227,76 @@ void initializeOpenCL() {
  */
 void releaseOpenCL() {
     clReleaseKernel(kernelYCbCr);
+    clReleaseKernel(kernelYCbCr2D);
     clReleaseKernel(kernelDilation);
+    clReleaseKernel(kernelDilation2D);
     clReleaseProgram(programYCbCr);
+    clReleaseProgram(programYCbCr2D);
     clReleaseProgram(programDilation);
+    clReleaseProgram(programDilation2D);
     clReleaseCommandQueue(queue);
     clReleaseContext(context);
 }
+
+
+void processWithOpenCL2D(const cv::Mat& inputImage, cv::Mat& outputYCbCr, cv::Mat& outputDilated, size_t localSizeX = 16, size_t localSizeY = 16) {
+    int width = inputImage.cols;
+    int height = inputImage.rows;
+    int channels = inputImage.channels();
+
+    std::vector<unsigned char> inputData(inputImage.data, inputImage.data + inputImage.total() * channels);
+    std::vector<unsigned char> outputDataYCbCr(width * height * channels);
+    std::vector<unsigned char> outputDataDilated(width * height * channels);
+
+    cl_int ret;
+    cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, inputData.size(), inputData.data(), &ret);
+    checkError(ret, "clCreateBuffer Input");
+    cl_mem outputBufferYCbCr = clCreateBuffer(context, CL_MEM_WRITE_ONLY, outputDataYCbCr.size(), NULL, &ret);
+    checkError(ret, "clCreateBuffer Output YCbCr");
+    cl_mem outputBufferDilated = clCreateBuffer(context, CL_MEM_WRITE_ONLY, outputDataDilated.size(), NULL, &ret);
+    checkError(ret, "clCreateBuffer Output Dilated");
+
+    // YCbCr Conversion
+    ret = clSetKernelArg(kernelYCbCr2D, 0, sizeof(cl_mem), &inputBuffer);
+    ret |= clSetKernelArg(kernelYCbCr2D, 1, sizeof(cl_mem), &outputBufferYCbCr);
+    ret |= clSetKernelArg(kernelYCbCr2D, 2, sizeof(int), &width);
+    ret |= clSetKernelArg(kernelYCbCr2D, 3, sizeof(int), &height);
+    checkError(ret, "clSetKernelArg YCbCr");
+
+    // 2D Workgroup sizes
+    size_t globalSize[2] = { (size_t)((width + localSizeX - 1) / localSizeX) * localSizeX,
+                             (size_t)((height + localSizeY - 1) / localSizeY) * localSizeY };
+    size_t localSize[2] = { localSizeX, localSizeY };
+
+    ret = clEnqueueNDRangeKernel(queue, kernelYCbCr2D, 2, NULL, globalSize, localSize, 0, NULL, NULL);
+    checkError(ret, "clEnqueueNDRangeKernel YCbCr");
+    clFinish(queue);
+
+    ret = clEnqueueReadBuffer(queue, outputBufferYCbCr, CL_TRUE, 0, outputDataYCbCr.size(), outputDataYCbCr.data(), 0, NULL, NULL);
+    checkError(ret, "clEnqueueReadBuffer YCbCr");
+
+    // Dilation kernel
+    ret = clSetKernelArg(kernelDilation2D, 0, sizeof(cl_mem), &outputBufferYCbCr);
+    ret |= clSetKernelArg(kernelDilation2D, 1, sizeof(cl_mem), &outputBufferDilated);
+    ret |= clSetKernelArg(kernelDilation2D, 2, sizeof(int), &width);
+    ret |= clSetKernelArg(kernelDilation2D, 3, sizeof(int), &height);
+    checkError(ret, "clSetKernelArg Dilation");
+
+    ret = clEnqueueNDRangeKernel(queue, kernelDilation2D, 2, NULL, globalSize, localSize, 0, NULL, NULL);
+    checkError(ret, "clEnqueueNDRangeKernel Dilation");
+    clFinish(queue);
+
+    ret = clEnqueueReadBuffer(queue, outputBufferDilated, CL_TRUE, 0, outputDataDilated.size(), outputDataDilated.data(), 0, NULL, NULL);
+    checkError(ret, "clEnqueueReadBuffer Dilation");
+
+    outputYCbCr = cv::Mat(height, width, inputImage.type(), outputDataYCbCr.data()).clone();
+    outputDilated = cv::Mat(height, width, inputImage.type(), outputDataDilated.data()).clone();
+
+    clReleaseMemObject(inputBuffer);
+    clReleaseMemObject(outputBufferYCbCr);
+    clReleaseMemObject(outputBufferDilated);
+}
+
 
 /**
  * @brief Processes an image using OpenCL for RGB to YCbCr conversion and dilation.
@@ -171,7 +305,7 @@ void releaseOpenCL() {
  * @param outputDilated The output image after dilation.
  * @param localSize The local work size for OpenCL.
  */
-void processWithOpenCL(const cv::Mat& inputImage, cv::Mat& outputYCbCr, cv::Mat& outputDilated, size_t localSize = 256) {
+void processWithOpenCL(const cv::Mat& inputImage, cv::Mat& outputYCbCr, cv::Mat& outputDilated, size_t localSize = NULL) {
     int width = inputImage.cols;
     int height = inputImage.rows;
     int channels = inputImage.channels();
@@ -196,10 +330,15 @@ void processWithOpenCL(const cv::Mat& inputImage, cv::Mat& outputYCbCr, cv::Mat&
     checkError(ret, "clSetKernelArg YCbCr");
 
     size_t globalSize = width * height;
-    if (globalSize % localSize != 0) {
+    if (localSize != NULL && globalSize % localSize != 0) {
         globalSize = ((globalSize / localSize) + 1) * localSize;
     }
-    ret = clEnqueueNDRangeKernel(queue, kernelYCbCr, 1, NULL, &globalSize, &localSize, 0, NULL, NULL);
+    if (localSize == NULL) {
+        ret = clEnqueueNDRangeKernel(queue, kernelYCbCr, 1, NULL, &globalSize, NULL, 0, NULL, NULL);
+    } else {
+        ret = clEnqueueNDRangeKernel(queue, kernelYCbCr, 1, NULL, &globalSize, &localSize, 0, NULL, NULL);
+    }
+
     checkError(ret, "clEnqueueNDRangeKernel YCbCr");
     clFinish(queue);
 
@@ -214,7 +353,11 @@ void processWithOpenCL(const cv::Mat& inputImage, cv::Mat& outputYCbCr, cv::Mat&
     ret |= clSetKernelArg(kernelDilation, 3, sizeof(int), &height);
     checkError(ret, "clSetKernelArg Dilation");
 
-    ret = clEnqueueNDRangeKernel(queue, kernelDilation, 1, NULL, &globalSize, &localSize, 0, NULL, NULL);
+    if (localSize == NULL) {
+        ret = clEnqueueNDRangeKernel(queue, kernelDilation, 1, NULL, &globalSize, NULL, 0, NULL, NULL);
+    } else {
+        ret = clEnqueueNDRangeKernel(queue, kernelDilation, 1, NULL, &globalSize, &localSize, 0, NULL, NULL);
+    }
     checkError(ret, "clEnqueueNDRangeKernel Dilation");
     clFinish(queue);
 
@@ -352,10 +495,22 @@ void processImageInMode(const std::string& mode, const cv::Mat& inputImage,
     if (mode == "non-parallel") {
         rgbToYCbCrNonParallel(inputImage, outputYCbCr);
         dilateNonParallel(inputImage, outputDilated);
+    } else if (mode == "opencl16x16") {
+        processWithOpenCL2D(inputImage, outputYCbCr, outputDilated, 16, 16);
+    } else if (mode == "opencl8x8") {
+        processWithOpenCL2D(inputImage, outputYCbCr, outputDilated, 8, 8);
+    } else if (mode == "opencl2x128") {
+        processWithOpenCL2D(inputImage, outputYCbCr, outputDilated, 128, 2);
+    } else if (mode == "opencl4x64") {
+        processWithOpenCL2D(inputImage, outputYCbCr, outputDilated, 64, 4);
+    } else if (mode == "opencl8x32") {
+        processWithOpenCL2D(inputImage, outputYCbCr, outputDilated, 32, 8);
     } else if (mode == "opencv") {
         rgbToYCbCrOpenCV(inputImage, outputYCbCr);
         dilateOpenCV(inputImage, outputDilated);
     } else if (mode == "opencl256") {
+        processWithOpenCL(inputImage, outputYCbCr, outputDilated, 256);
+    } else if (mode == "opencl") {
         processWithOpenCL(inputImage, outputYCbCr, outputDilated);
     } else if (mode == "opencl128") {
         processWithOpenCL(inputImage, outputYCbCr, outputDilated, 128);
@@ -380,7 +535,7 @@ void processImageInMode(const std::string& mode, const cv::Mat& inputImage,
  */
 void processImageInAllModes(const cv::Mat& inputImage, const std::string& inputPath,
                             const std::string& outputBasePath, std::ofstream& csvFile) {
-    std::vector<std::string> modes = {"non-parallel", "opencv", "opencl256", "opencl128", "opencl64"};
+    std::vector<std::string> modes = {"opencl16x16", "opencl8x8", "opencv", "non-parallel", "opencl256", "opencl128", "opencl64", "opencl4x64", "opencl8x32", "opencl2x128"};
     for (const auto& mode : modes) {
         cv::Mat outputYCbCr, outputDilated;
         double elapsedTime;
