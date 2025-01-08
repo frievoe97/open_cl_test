@@ -98,6 +98,9 @@ __kernel void dilate(__global unsigned char* inputImage, __global unsigned char*
 }
 )";
 
+/**
+ * @brief OpenCL kernel source code for 2D RGB to YCbCr conversion.
+ */
 const char* kernelSourceYCbCr2D = R"(
 __kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height) {
     int x = get_global_id(0); // x-Koordinate
@@ -121,6 +124,9 @@ __kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned
 }
 )";
 
+/**
+ * @brief OpenCL kernel source code for 2D dilation operation.
+ */
 const char* kernelSourceDilation2D = R"(
 __kernel void dilate(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height) {
     int x = get_global_id(0);
@@ -238,7 +244,15 @@ void releaseOpenCL() {
     clReleaseContext(context);
 }
 
-
+/**
+ * @brief Processes an image using OpenCL for RGB to YCbCr conversion and dilation with 2D workgroups.
+ *
+ * @param inputImage The input image.
+ * @param outputYCbCr The output image in YCbCr format.
+ * @param outputDilated The output image after dilation.
+ * @param localSizeX The local work size for the X dimension.
+ * @param localSizeY The local work size for the Y dimension.
+ */
 void processWithOpenCL2D(const cv::Mat& inputImage, cv::Mat& outputYCbCr, cv::Mat& outputDilated, size_t localSizeX = 16, size_t localSizeY = 16) {
     int width = inputImage.cols;
     int height = inputImage.rows;
