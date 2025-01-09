@@ -520,10 +520,11 @@ void dilateOpenCV(const cv::Mat& inputImage, cv::Mat& outputImage) {
  */
 void processImageInMode(const std::string& mode, const cv::Mat& inputImage,
                         cv::Mat& outputYCbCr, cv::Mat& outputDilated, double& elapsedTime) {
-    auto start = std::chrono::high_resolution_clock::now();
 
     cv::Mat grayImage;
     cv::cvtColor(inputImage, grayImage, cv::COLOR_BGR2GRAY);
+
+    auto start = std::chrono::high_resolution_clock::now();
 
     if (mode == "non-parallel") {
         rgbToYCbCrNonParallel(inputImage, outputYCbCr);
