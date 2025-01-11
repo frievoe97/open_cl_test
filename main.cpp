@@ -167,19 +167,85 @@ cl_kernel kernelYCbCr2D = nullptr;
 cl_kernel kernelDilation = nullptr;
 cl_kernel kernelDilation2D = nullptr;
 
+void listAllPlatformsAndDevices() {
+    cl_uint numPlatforms;
+    cl_int ret = clGetPlatformIDs(0, NULL, &numPlatforms);
+    if (ret != CL_SUCCESS) {
+        std::cerr << "Failed to get the number of OpenCL platforms." << std::endl;
+        return;
+    }
+
+    std::vector<cl_platform_id> platforms(numPlatforms);
+    ret = clGetPlatformIDs(numPlatforms, platforms.data(), NULL);
+    if (ret != CL_SUCCESS) {
+        std::cerr << "Failed to get OpenCL platforms." << std::endl;
+        return;
+    }
+
+    for (cl_uint i = 0; i < numPlatforms; i++) {
+        char platformName[128];
+        ret = clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, sizeof(platformName), platformName, NULL);
+        if (ret != CL_SUCCESS) {
+            std::cerr << "Failed to get platform name." << std::endl;
+            continue;
+        }
+
+        std::cout << "Platform " << i << ": " << platformName << std::endl;
+
+        cl_uint numDevices;
+        ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+        if (ret != CL_SUCCESS) {
+            std::cerr << "Failed to get the number of devices for platform " << i << "." << std::endl;
+            continue;
+        }
+
+        std::vector<cl_device_id> devices(numDevices);
+        ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, numDevices, devices.data(), NULL);
+        if (ret != CL_SUCCESS) {
+            std::cerr << "Failed to get devices for platform " << i << "." << std::endl;
+            continue;
+        }
+
+        for (cl_uint j = 0; j < numDevices; j++) {
+            char deviceName[128];
+            ret = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, sizeof(deviceName), deviceName, NULL);
+            if (ret != CL_SUCCESS) {
+                std::cerr << "Failed to get device name for platform " << i << ", device " << j << "." << std::endl;
+                continue;
+            }
+
+            std::cout << "  Device " << j << ": " << deviceName << std::endl;
+
+        }
+    }
+}
+
 /**
  * @brief Initializes OpenCL context, command queue, and compiles kernels.
  */
 void initializeOpenCL() {
     cl_platform_id platform;
-    cl_device_id device;
+    cl_device_id devices[3]; // Adjust the size as needed for the number of devices
     cl_int ret;
 
-    // Initialize OpenCL platform and device
+    listAllPlatformsAndDevices();
+
+    // Get the first platform
     ret = clGetPlatformIDs(1, &platform, NULL);
     checkError(ret, "clGetPlatformIDs");
-    ret = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
+
+    // Get all devices of the platform
+    ret = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 3, devices, NULL);
     checkError(ret, "clGetDeviceIDs");
+
+    // Select device 2 (third device, zero-based index)
+    cl_device_id device = devices[2];
+
+    // Print the name of the selected device
+    char deviceName[128];
+    ret = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(deviceName), deviceName, NULL);
+    checkError(ret, "clGetDeviceInfo");
+    std::cout << "Selected Device: " << deviceName << std::endl;
 
     // Create OpenCL context and command queue
     context = clCreateContext(NULL, 1, &device, NULL, NULL, &ret);
