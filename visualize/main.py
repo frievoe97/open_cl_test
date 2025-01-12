@@ -50,13 +50,15 @@ def analyze_csv():
     # Plot 1: Boxplot for average, min, max execution time per mode
     fig, ax = plt.subplots(figsize=(10, 4))
     df.boxplot(column="ExecutionTimeSeconds", by="Mode", ax=ax, grid=False, patch_artist=True, 
-               boxprops=dict(facecolor=plt.cm.viridis(0.2)))
+            boxprops=dict(facecolor=plt.cm.viridis(0.2)))
     ax.set_title("Execution Time Distribution by Mode")
     ax.set_xlabel("Mode")
     ax.set_ylabel("Execution Time (s)")
     ax.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')  # Texte rotieren
     plt.suptitle("")
     save_plot(fig, "boxplot_execution_time_per_mode.png")
+
 
     # Plot 2: Bar chart for average execution time by mode
     avg_time_per_mode = df.groupby("Mode")["ExecutionTimeSeconds"].mean().sort_values()
@@ -100,6 +102,12 @@ def analyze_csv():
     # Plot 5: Heatmap for execution time (Category vs. Mode)
     fig, ax = plt.subplots(figsize=(8, 6))
     heatmap_data = grouped.fillna(0).T
+
+    # Reorder columns in the desired order
+    desired_order = ["animal", "nature", "dice", "human"]
+    heatmap_data = heatmap_data[desired_order]
+
+    print(heatmap_data)
     cax = ax.matshow(heatmap_data, cmap="viridis", aspect="auto", zorder=-1)
     fig.colorbar(cax)
     ax.set_xticks(range(len(heatmap_data.columns)))
