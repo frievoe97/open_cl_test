@@ -23,7 +23,8 @@ from PIL import Image
 import os
 
 # Path to the CSV file containing execution time and image file data.
-csv_path = "../output/results.csv"
+# csv_path = "../output/results.csv"
+csv_path = "../backup/intel/results.csv"
 # Directory where plots will be saved.
 output_dir = "./plots"
 os.makedirs(output_dir, exist_ok=True)
@@ -125,6 +126,8 @@ def analyze_csv():
     # -------------------------------------------------------------------------
     # Create a bar chart of average execution time for each mode.
     avg_time_per_mode = df.groupby("Mode")["ExecutionTimeSeconds"].mean().sort_values()
+
+    # Normaler Balkendiagramm-Plot
     fig1, ax1 = plt.subplots(figsize=(10, 4))
     avg_time_per_mode.plot(
         kind="bar",
@@ -137,7 +140,29 @@ def analyze_csv():
     ax1.set_xlabel("Mode")
     ax1.set_ylabel("Execution Time (s)")
     ax1.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+        
+    # Speichern des normalen Plots
     save_plot(fig1, "barchart_avg_execution_time_per_mode.png")
+
+    # -------------------------------------------------------------------------
+    # Zweiter Plot mit logarithmischer y-Achse
+    fig2, ax2 = plt.subplots(figsize=(10, 4))
+    avg_time_per_mode.plot(
+        kind="bar",
+        color=[plt.cm.viridis(i / len(avg_time_per_mode)) for i in range(len(avg_time_per_mode))],
+        edgecolor="black",
+        ax=ax2,
+        zorder=3
+    )
+    ax2.set_yscale("log")  # Setzt die y-Achse auf logarithmische Skalierung
+    ax2.set_title("Average Execution Time by Mode (Log Scale)")
+    ax2.set_xlabel("Mode")
+    ax2.set_ylabel("Execution Time (s, log scale)")
+    ax2.grid(axis='y', which='both', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+
+    # Speichern des logarithmischen Plots
+    save_plot(fig2, "barchart_avg_execution_time_per_mode_logscale.png")    
+
 
     # -------------------------------------------------------------------------
     # Create a bar chart for the average execution time for OpenCL modes.
@@ -160,18 +185,44 @@ def analyze_csv():
     # -------------------------------------------------------------------------
     # Line plot: Execution time vs. Total Pixels, differentiated by Mode.
     fig1, ax1 = plt.subplots(figsize=(10, 4))
+
     for i, (mode, group) in enumerate(df.groupby("Mode")):
         group = group.sort_values("TotalPixels")
         x = group["TotalPixels"]
         y = group["ExecutionTimeSeconds"]
+
         color = plt.cm.viridis(i / len(df["Mode"].unique()))
         ax1.plot(x, y, label=mode, marker="o", color=color)
+
     ax1.set_title("Execution Time vs. Total Pixels by Mode")
     ax1.set_xlabel("Total Pixels")
     ax1.set_ylabel("Execution Time (s)")
     ax1.legend(title="Mode")
     ax1.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+
     save_plot(fig1, "lineplot_execution_time_vs_total_pixels.png")
+
+    # -------------------------------------------------------------------------
+    # Line plot with log-scale y-axis
+    fig2, ax2 = plt.subplots(figsize=(10, 4))
+
+    for i, (mode, group) in enumerate(df.groupby("Mode")):
+        group = group.sort_values("TotalPixels")
+        x = group["TotalPixels"]
+        y = group["ExecutionTimeSeconds"]
+
+        color = plt.cm.viridis(i / len(df["Mode"].unique()))
+        ax2.plot(x, y, label=mode, marker="o", color=color)
+
+    ax2.set_yscale("log")
+    ax2.set_title("Execution Time vs. Total Pixels by Mode (Log Scale)")
+    ax2.set_xlabel("Total Pixels")
+    ax2.set_ylabel("Execution Time (s, log scale)")
+    ax2.legend(title="Mode")
+    ax2.grid(color='lightgray', linestyle='-', linewidth=0.5, which='both', zorder=-1)
+
+    save_plot(fig2, "lineplot_execution_time_vs_total_pixels_logscale.png")
+
 
     # -------------------------------------------------------------------------
     # Line plot: Execution time vs. Total Pixels for OpenCL modes only.
