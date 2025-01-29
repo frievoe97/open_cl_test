@@ -104,7 +104,8 @@ __kernel void dilate(__global unsigned char* inputImage, __global unsigned char*
  * @brief OpenCL kernel source code for 2D RGB to YCbCr conversion.
  */
 const char* kernelSourceYCbCr2D = R"(
-__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height, int channels) {
+__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global
+                    unsigned char* outputImage, int width, int height, int channels) {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
