@@ -50,11 +50,11 @@ void checkError(cl_int ret, const char* operation) {
  * @brief OpenCL kernel source code for RGB to YCbCr conversion.
  */
 const char* kernelSourceYCbCr = R"(
-__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height) {
+__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height, int channels) {
     int id = get_global_id(0);
     int x = id % width;
     int y = id / width;
-    int idx = (y * width + x) * 3;
+    int idx = (y * width + x) * channels;
 
     float R = inputImage[idx] / 255.0f;
     float G = inputImage[idx + 1] / 255.0f;
@@ -104,14 +104,14 @@ __kernel void dilate(__global unsigned char* inputImage, __global unsigned char*
  * @brief OpenCL kernel source code for 2D RGB to YCbCr conversion.
  */
 const char* kernelSourceYCbCr2D = R"(
-__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height) {
+__kernel void rgb_to_ycbcr(__global unsigned char* inputImage, __global unsigned char* outputImage, int width, int height, int channels) {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
     if (x >= width || y >= height)
         return;
 
-    int idx = (y * width + x) * 3;
+    int idx = (y * width + x) * channels;
 
     float R = inputImage[idx] / 255.0f;
     float G = inputImage[idx + 1] / 255.0f;
@@ -276,6 +276,7 @@ void processWithOpenCL2D(const cv::Mat& inputImage, cv::Mat& grayscaleImage, cv:
     ret |= clSetKernelArg(kernelYCbCr2D, 1, sizeof(cl_mem), &outputBufferYCbCr);
     ret |= clSetKernelArg(kernelYCbCr2D, 2, sizeof(int), &width);
     ret |= clSetKernelArg(kernelYCbCr2D, 3, sizeof(int), &height);
+    ret |= clSetKernelArg(kernelYCbCr2D, 4, sizeof(int), &channels);
     checkError(ret, "clSetKernelArg YCbCr");
 
     size_t globalSize[2] = { (size_t)((width + localSizeX - 1) / localSizeX) * localSizeX,
@@ -353,6 +354,7 @@ void processWithOpenCL(const cv::Mat& inputImage, cv::Mat& grayscaleImage, cv::M
     ret |= clSetKernelArg(kernelYCbCr, 1, sizeof(cl_mem), &outputBufferYCbCr);
     ret |= clSetKernelArg(kernelYCbCr, 2, sizeof(int), &width);
     ret |= clSetKernelArg(kernelYCbCr, 3, sizeof(int), &height);
+    ret |= clSetKernelArg(kernelYCbCr, 4, sizeof(int), &channels);
     checkError(ret, "clSetKernelArg YCbCr");
 
     size_t globalSize = width * height;
@@ -505,9 +507,7 @@ void dilateOpenCV(const cv::Mat& inputImage, cv::Mat& outputImage) {
     cv::Mat dilatedGray;
     cv::dilate(inputImage, dilatedGray, kernel);
 
-
-    // Convert the dilated grayscale image back to a 3-channel image for consistency
-    cv::cvtColor(dilatedGray, outputImage, cv::COLOR_GRAY2BGR);
+    outputImage = dilatedGray;
 }
 
 /**
