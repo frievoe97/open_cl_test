@@ -8,7 +8,7 @@
 This program processes images using three modes of parallelization:
 1. **Non-parallel**: Sequential processing.
 2. **OpenCV-based parallelization**: Utilizes OpenCV library functions.
-3. **OpenCL-based parallelization**: Processes images with OpenCL kernels using three local work sizes (256, 128, 64).
+3. **OpenCL-based parallelization**: Processes images with OpenCL kernels using different local work sizes.
 
 The program converts the input image from RGB to YCbCr and applies a dilation operation. Results are saved as separate images for each mode and configuration.
 
@@ -25,7 +25,7 @@ The main entry point for the program is `main.cpp`.
 
 ## Build Instructions
 
-This project uses CMake for build configuration and supports multiple build systems like Ninja and Make.
+This project uses CMake for build configuration and supports multiple build systems like Make.
 
 ### Steps to Build
 
@@ -39,25 +39,20 @@ This project uses CMake for build configuration and supports multiple build syst
 
 3. **Create a Build Directory**
    ```bash
-   mkdir build && cd build
+   mkdir build
    ```
 
-4. **Run CMake**
+4. **Run and init CMake**
    ```bash
-   cmake -DCMAKE_BUILD_TYPE=Debug ..
+   cmake -S . -B ./build
+   cmake --build ./build --target open_cl_test -j 10
    ```
 
-  - Replace `Debug` with `Release` for an optimized build.
-  - Ensure `OpenCL` and `OpenCV` are detected during this step. If not, set environment variables like `OpenCV_DIR` or `OpenCL_INCLUDE_DIR` to the appropriate paths.
+  - Ensure `OpenCL` and `OpenCV` are detected during this step. If not check CMakeLists.txt and set the appropriate paths.
 
 5. **Compile the Project**
    ```bash
    make
-   ```
-
-   Or, if you are using Ninja:
-   ```bash
-   ninja
    ```
 
 ## Execution
@@ -66,7 +61,7 @@ The program processes all `.png`, `.jpg`, and `.jpeg` images in a specified dire
 
 1. `non-parallel`
 2. `opencv`
-3. `opencl` (with local work sizes: 256, 128, and 64)
+3. `opencl` (with local work sizes: 8x8, 16x16, 32x32, 4x64, 2x128, 64, 128, 256)
 
 ### Example Usage
 
@@ -100,5 +95,5 @@ The program generates a `results.csv` file in `<outputpath>` with the following 
 
 ## Notes
 
-- This project includes three OpenCL local sizes (256, 128, 64) to test performance across configurations. Optimal size may vary depending on the hardware.
+- This project includes different OpenCL local sizes to test performance across configurations. Optimal size may vary depending on the hardware.
 - Performance results are logged in `results.csv` for comparison.
