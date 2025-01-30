@@ -6,7 +6,7 @@ Plots include boxplots, bar charts, line plots, and heatmaps. All plots are save
 output directory with high resolution.
 
 The script performs the following tasks:
-- Reads in a CSV file containing data about execution times and image file paths.
+- Reads a CSV file containing data about execution times and image file paths.
 - Loads each image to compute its dimensions and total number of pixels.
 - Augments the CSV data with the computed total pixels.
 - Generates multiple plots to compare execution times:
@@ -17,17 +17,18 @@ The script performs the following tasks:
 - Saves all generated plots in the specified output directory.
 """
 
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
-import os
 
 # Path to the CSV file containing execution time and image file data.
-# csv_path = "../output/results.csv"
 csv_path = "../backup/intel/results.csv"
+
 # Directory where plots will be saved.
 output_dir = "./plots"
 os.makedirs(output_dir, exist_ok=True)
+
 
 def save_plot(fig, filename):
     """
@@ -40,6 +41,7 @@ def save_plot(fig, filename):
     path = os.path.join(output_dir, filename)
     fig.savefig(path, dpi=300, bbox_inches="tight")
     print(f"Plot saved: {path}")
+
 
 def analyze_csv():
     """
@@ -82,25 +84,29 @@ def analyze_csv():
             print(f"Error loading image {input_file}: {e}")
 
     # Add a new column "TotalPixels" to the DataFrame based on computed image sizes.
-    df["TotalPixels"] = df["InputFile"].map(lambda x: image_sizes[x]["total_pixels"] if x in image_sizes else None)
+    df["TotalPixels"] = df["InputFile"].map(
+        lambda x: image_sizes[x]["total_pixels"] if x in image_sizes else None
+    )
 
-    plt.rcParams.update({"xtick.labelsize": 14, "ytick.labelsize": 14})
-    plt.rcParams.update({"axes.titlesize": 14})
-    plt.rcParams.update({"axes.labelsize": 14})
-
+    # Configure plot aesthetics for better readability.
+    plt.rcParams.update({
+        "xtick.labelsize": 14,
+        "ytick.labelsize": 14,
+        "axes.titlesize": 14,
+        "axes.labelsize": 14
+    })
 
     # -------------------------------------------------------------------------
-    # Create a boxplot showing the distribution of execution times by mode.
+    # Boxplot: Execution Time Distribution by Mode
     fig1, ax1 = plt.subplots(figsize=(8, 3))
     df.boxplot(
-        column="ExecutionTimeSeconds", 
-        by="Mode", 
-        ax=ax1, 
-        grid=False, 
-        patch_artist=True, 
+        column="ExecutionTimeSeconds",
+        by="Mode",
+        ax=ax1,
+        grid=False,
+        patch_artist=True,
         boxprops=dict(facecolor=plt.cm.viridis(0.2))
     )
-    #ax1.set_title("Execution Time Distribution by Mode")
     ax1.set_xlabel("Mode")
     ax1.set_ylabel("Execution Time (s)")
     ax1.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
@@ -109,18 +115,17 @@ def analyze_csv():
     save_plot(fig1, "boxplot_execution_time_per_mode.png")
 
     # -------------------------------------------------------------------------
-    # Create a boxplot for execution times for modes starting with "opencl".
+    # Boxplot: Execution Time Distribution for OpenCL Modes
     opencl_modes = df[df["Mode"].str.startswith("opencl")]
     fig2, ax2 = plt.subplots(figsize=(8, 3))
     opencl_modes.boxplot(
-        column="ExecutionTimeSeconds", 
-        by="Mode", 
-        ax=ax2, 
-        grid=False, 
-        patch_artist=True, 
+        column="ExecutionTimeSeconds",
+        by="Mode",
+        ax=ax2,
+        grid=False,
+        patch_artist=True,
         boxprops=dict(facecolor=plt.cm.viridis(0.5))
     )
-    #ax2.set_title("Execution Time Distribution for OpenCL Modes")
     ax2.set_xlabel("Mode")
     ax2.set_ylabel("Execution Time (s)")
     ax2.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
@@ -129,209 +134,177 @@ def analyze_csv():
     save_plot(fig2, "boxplot_execution_time_opencl_modes.png")
 
     # -------------------------------------------------------------------------
-    # Create a bar chart of average execution time for each mode.
+    # Bar Chart: Average Execution Time per Mode
     avg_time_per_mode = df.groupby("Mode")["ExecutionTimeSeconds"].mean().sort_values()
 
-    # Normaler Balkendiagramm-Plot
-    fig1, ax1 = plt.subplots(figsize=(8, 3))
+    fig3, ax3 = plt.subplots(figsize=(8, 3))
     avg_time_per_mode.plot(
         kind="bar",
         color=[plt.cm.viridis(i / len(avg_time_per_mode)) for i in range(len(avg_time_per_mode))],
         edgecolor="black",
-        ax=ax1,
+        ax=ax3,
         zorder=3
     )
-    #ax1.set_title("Average Execution Time by Mode")
-    ax1.set_xlabel("Mode")
-    ax1.set_ylabel("Execution Time (s)")
-    ax1.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-        
-    # Speichern des normalen Plots
-    save_plot(fig1, "barchart_avg_execution_time_per_mode.png")
+    ax3.set_xlabel("Mode")
+    ax3.set_ylabel("Execution Time (s)")
+    ax3.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig3, "barchart_avg_execution_time_per_mode.png")
 
     # -------------------------------------------------------------------------
-    # Zweiter Plot mit logarithmischer y-Achse
-    fig2, ax2 = plt.subplots(figsize=(8, 3))
+    # Bar Chart: Average Execution Time per Mode (Log Scale)
+    fig4, ax4 = plt.subplots(figsize=(8, 3))
     avg_time_per_mode.plot(
         kind="bar",
         color=[plt.cm.viridis(i / len(avg_time_per_mode)) for i in range(len(avg_time_per_mode))],
         edgecolor="black",
-        ax=ax2,
+        ax=ax4,
         zorder=3
     )
-    ax2.set_yscale("log")  # Setzt die y-Achse auf logarithmische Skalierung
-    #ax2.set_title("Average Execution Time by Mode (Log Scale)")
-    ax2.set_xlabel("Mode")
-    ax2.set_ylabel("Execution Time (s)")
-    ax2.grid(axis='y', which='both', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-
-    # Speichern des logarithmischen Plots
-    save_plot(fig2, "barchart_avg_execution_time_per_mode_logscale.png")    
-
+    ax4.set_yscale("log")
+    ax4.set_xlabel("Mode")
+    ax4.set_ylabel("Execution Time (s)")
+    ax4.grid(axis='y', which='both', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig4, "barchart_avg_execution_time_per_mode_logscale.png")
 
     # -------------------------------------------------------------------------
-    # Create a bar chart for the average execution time for OpenCL modes.
-    opencl_modes = df[df["Mode"].str.startswith("opencl")]
+    # Bar Chart: Average Execution Time for OpenCL Modes
     avg_time_opencl = opencl_modes.groupby("Mode")["ExecutionTimeSeconds"].mean().sort_values()
-    fig2, ax2 = plt.subplots(figsize=(8, 3))
+    fig5, ax5 = plt.subplots(figsize=(8, 3))
     avg_time_opencl.plot(
         kind="bar",
         color=[plt.cm.viridis(i / len(avg_time_opencl)) for i in range(len(avg_time_opencl))],
         edgecolor="black",
-        ax=ax2,
+        ax=ax5,
         zorder=3
     )
-    #ax2.set_title("Average Execution Time for OpenCL Modes")
-    ax2.set_xlabel("Mode")
-    ax2.set_ylabel("Execution Time (s)")
-    ax2.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig2, "barchart_avg_execution_time_opencl_modes.png")
+    ax5.set_xlabel("Mode")
+    ax5.set_ylabel("Execution Time (s)")
+    ax5.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig5, "barchart_avg_execution_time_opencl_modes.png")
 
     # -------------------------------------------------------------------------
-    # Line plot: Execution time vs. Total Pixels, differentiated by Mode.
-    fig1, ax1 = plt.subplots(figsize=(8, 3))
-
+    # Line Plot: Execution Time vs. Total Pixels by Mode
+    fig6, ax6 = plt.subplots(figsize=(8, 3))
     for i, (mode, group) in enumerate(df.groupby("Mode")):
-        group = group.sort_values("TotalPixels")
-        x = group["TotalPixels"]
-        y = group["ExecutionTimeSeconds"]
-
+        group_sorted = group.sort_values("TotalPixels")
+        x = group_sorted["TotalPixels"]
+        y = group_sorted["ExecutionTimeSeconds"]
         color = plt.cm.viridis(i / len(df["Mode"].unique()))
-        ax1.plot(x, y, label=mode, marker="o", color=color)
-
-    #ax1.set_title("Execution Time vs. Total Pixels by Mode")
-    ax1.set_xlabel("Total Pixels")
-    ax1.set_ylabel("Execution Time (s)")
-    # ax1.legend(title="Mode")
-    ax1.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
-    ax1.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-
-    save_plot(fig1, "lineplot_execution_time_vs_total_pixels.png")
+        ax6.plot(x, y, label=mode, marker="o", color=color)
+    ax6.set_xlabel("Total Pixels")
+    ax6.set_ylabel("Execution Time (s)")
+    ax6.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
+    ax6.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig6, "lineplot_execution_time_vs_total_pixels.png")
 
     # -------------------------------------------------------------------------
-    # Line plot with log-scale y-axis
-    fig2, ax2 = plt.subplots(figsize=(8, 3))
-
+    # Line Plot: Execution Time vs. Total Pixels by Mode (Log Scale)
+    fig7, ax7 = plt.subplots(figsize=(8, 3))
     for i, (mode, group) in enumerate(df.groupby("Mode")):
-        group = group.sort_values("TotalPixels")
-        x = group["TotalPixels"]
-        y = group["ExecutionTimeSeconds"]
-
+        group_sorted = group.sort_values("TotalPixels")
+        x = group_sorted["TotalPixels"]
+        y = group_sorted["ExecutionTimeSeconds"]
         color = plt.cm.viridis(i / len(df["Mode"].unique()))
-        ax2.plot(x, y, label=mode, marker="o", color=color)
-
-    ax2.set_yscale("log")
-    #ax2.set_title("Execution Time vs. Total Pixels by Mode (Log Scale)")
-    ax2.set_xlabel("Total Pixels")
-    ax2.set_ylabel("Execution Time (s)")
-    # ax2.legend(title="Mode")
-    ax2.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
-    ax2.grid(color='lightgray', linestyle='-', linewidth=0.5, which='both', zorder=-1)
-
-    save_plot(fig2, "lineplot_execution_time_vs_total_pixels_logscale.png")
-
+        ax7.plot(x, y, label=mode, marker="o", color=color)
+    ax7.set_yscale("log")
+    ax7.set_xlabel("Total Pixels")
+    ax7.set_ylabel("Execution Time (s)")
+    ax7.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
+    ax7.grid(color='lightgray', linestyle='-', linewidth=0.5, which='both', zorder=-1)
+    save_plot(fig7, "lineplot_execution_time_vs_total_pixels_logscale.png")
 
     # -------------------------------------------------------------------------
-    # Line plot: Execution time vs. Total Pixels for OpenCL modes only.
-    fig2, ax2 = plt.subplots(figsize=(8, 3))
-    opencl_modes = df[df["Mode"].str.startswith("opencl")]
+    # Line Plot: Execution Time vs. Total Pixels for OpenCL Modes Only
+    fig8, ax8 = plt.subplots(figsize=(8, 3))
     for i, (mode, group) in enumerate(opencl_modes.groupby("Mode")):
-        group = group.sort_values("TotalPixels")
-        x = group["TotalPixels"]
-        y = group["ExecutionTimeSeconds"]
+        group_sorted = group.sort_values("TotalPixels")
+        x = group_sorted["TotalPixels"]
+        y = group_sorted["ExecutionTimeSeconds"]
         color = plt.cm.viridis(i / len(opencl_modes["Mode"].unique()))
-        ax2.plot(x, y, label=mode, marker="o", color=color)
-    #ax2.set_title("Execution Time vs. Total Pixels by OpenCL Mode")
-    ax2.set_xlabel("Total Pixels")
-    ax2.set_ylabel("Execution Time (s)")
-    # ax2.legend(title="Mode")
-    ax2.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
-    ax2.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig2, "lineplot_execution_time_vs_total_pixels_opencl_modes.png")
+        ax8.plot(x, y, label=mode, marker="o", color=color)
+    ax8.set_xlabel("Total Pixels")
+    ax8.set_ylabel("Execution Time (s)")
+    ax8.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
+    ax8.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig8, "lineplot_execution_time_vs_total_pixels_opencl_modes.png")
 
     # -------------------------------------------------------------------------
-    # Grouped bar chart: Average execution time by image category and mode.
-    # Extract the image category from the input file path using a regular expression.
+    # Grouped Bar Chart: Average Execution Time by Image Category and Mode
     df["Category"] = df["InputFile"].str.extract(r'images/([a-zA-Z]+)')[0]
     grouped = df.groupby(["Category", "Mode"])["ExecutionTimeSeconds"].mean().unstack()
-    fig1, ax1 = plt.subplots(figsize=(8, 3))
+    fig9, ax9 = plt.subplots(figsize=(8, 3))
     grouped.plot(
-        kind="bar", 
-        stacked=False, 
-        ax=ax1, 
-        colormap="viridis", 
-        width=0.8, 
-        zorder=3, 
+        kind="bar",
+        stacked=False,
+        ax=ax9,
+        colormap="viridis",
+        width=0.8,
+        zorder=3,
         edgecolor="black"
     )
-    #ax1.set_title("Execution Time by Category and Mode")
-    ax1.set_xlabel("Category")
-    ax1.set_ylabel("Execution Time (s)")
-    ax1.legend(title="Mode")
-    ax1.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig1, "grouped_barchart_execution_time_by_category.png")
+    ax9.set_xlabel("Category")
+    ax9.set_ylabel("Execution Time (s)")
+    ax9.legend(title="Mode")
+    ax9.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig9, "grouped_barchart_execution_time_by_category.png")
 
     # -------------------------------------------------------------------------
     # Grouped bar chart: Average execution time by image category for OpenCL modes.
     opencl_modes = df[df["Mode"].str.startswith("opencl")]
     grouped_opencl = opencl_modes.groupby(["Category", "Mode"])["ExecutionTimeSeconds"].mean().unstack()
-    fig2, ax2 = plt.subplots(figsize=(8, 3))
+    fig10, ax10 = plt.subplots(figsize=(8, 3))
     grouped_opencl.plot(
         kind="bar", 
         stacked=False, 
-        ax=ax2, 
+        ax=ax10, 
         colormap="viridis", 
         width=0.8, 
         zorder=3, 
         edgecolor="black"
     )
-    #ax2.set_title("Execution Time by Category and OpenCL Mode")
-    ax2.set_xlabel("Category")
-    ax2.set_ylabel("Execution Time (s)")
-    ax2.legend(
+    ax10.set_xlabel("Category")
+    ax10.set_ylabel("Execution Time (s)")
+    ax10.legend(
         title="Mode", 
         loc="upper right", 
     )
-    ax2.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig2, "grouped_barchart_execution_time_opencl_by_category.png")
+    ax10.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
+    save_plot(fig10, "grouped_barchart_execution_time_opencl_by_category.png")
 
     # -------------------------------------------------------------------------
-    # Heatmap: Execution time by category and mode.
-    fig1, ax1 = plt.subplots(figsize=(8, 6))
+    # Heatmap: Execution Time by Category and Mode
+    fig11, ax11 = plt.subplots(figsize=(8, 6))
     heatmap_data = grouped.fillna(0).T
 
-    # Reorder categories as desired.
+    # Define the desired order of categories.
     desired_order = ["animal", "nature", "dice", "human"]
     heatmap_data = heatmap_data[desired_order]
 
-    cax1 = ax1.matshow(heatmap_data, cmap="viridis", aspect="auto", zorder=-1)
-    fig1.colorbar(cax1)
-    ax1.set_xticks(range(len(heatmap_data.columns)))
-    ax1.set_xticklabels(heatmap_data.columns, rotation=45, ha="right")
-    ax1.set_yticks(range(len(heatmap_data.index)))
-    ax1.set_yticklabels(heatmap_data.index)
-    #ax1.set_title("Heatmap of Execution Time by Category and Mode")
-    save_plot(fig1, "heatmap_execution_time_by_category_and_mode.png")
+    cax1 = ax11.matshow(heatmap_data, cmap="viridis", aspect="auto", zorder=-1)
+    fig11.colorbar(cax1)
+    ax11.set_xticks(range(len(heatmap_data.columns)))
+    ax11.set_xticklabels(heatmap_data.columns, rotation=45, ha="right")
+    ax11.set_yticks(range(len(heatmap_data.index)))
+    ax11.set_yticklabels(heatmap_data.index)
+    save_plot(fig11, "heatmap_execution_time_by_category_and_mode.png")
 
     # -------------------------------------------------------------------------
-    # Heatmap: Execution time by category for OpenCL modes.
-    opencl_modes = df[df["Mode"].str.startswith("opencl")]
-    grouped_opencl = opencl_modes.groupby(["Category", "Mode"])["ExecutionTimeSeconds"].mean().unstack()
+    # Heatmap: Execution Time by Category for OpenCL Modes
     heatmap_opencl_data = grouped_opencl.fillna(0).T
-
-    # Apply the desired category order.
     heatmap_opencl_data = heatmap_opencl_data[desired_order]
 
-    fig2, ax2 = plt.subplots(figsize=(8, 6))
-    cax2 = ax2.matshow(heatmap_opencl_data, cmap="viridis", aspect="auto", zorder=-1)
-    fig2.colorbar(cax2)
-    ax2.set_xticks(range(len(heatmap_opencl_data.columns)))
-    ax2.set_xticklabels(heatmap_opencl_data.columns, rotation=45, ha="right")
-    ax2.set_yticks(range(len(heatmap_opencl_data.index)))
-    ax2.set_yticklabels(heatmap_opencl_data.index)
-    #ax2.set_title("Heatmap of Execution Time by Category and OpenCL Mode")
-    save_plot(fig2, "heatmap_execution_time_opencl_by_category_and_mode.png")
+    fig12, ax12 = plt.subplots(figsize=(8, 6))
+    cax2 = ax12.matshow(heatmap_opencl_data, cmap="viridis", aspect="auto", zorder=-1)
+    fig12.colorbar(cax2)
+    ax12.set_xticks(range(len(heatmap_opencl_data.columns)))
+    ax12.set_xticklabels(heatmap_opencl_data.columns, rotation=45, ha="right")
+    ax12.set_yticks(range(len(heatmap_opencl_data.index)))
+    ax12.set_yticklabels(heatmap_opencl_data.index)
+    save_plot(fig12, "heatmap_execution_time_opencl_by_category_and_mode.png")
+
 
 if __name__ == "__main__":
-    # Run the CSV analysis and plotting when the script is executed.
+    """
+    Entry point for the script. Executes the CSV analysis and plotting functions.
+    """
     analyze_csv()
