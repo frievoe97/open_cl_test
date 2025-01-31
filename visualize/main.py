@@ -21,9 +21,10 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
+import numpy as np
 
 # Path to the CSV file containing execution time and image file data.
-csv_path = "../backup/intel/results.csv"
+csv_path = "../backup/m2pro/results.csv"
 
 # Directory where plots will be saved.
 output_dir = "./plots"
@@ -65,6 +66,12 @@ def analyze_csv():
 
     print("Data loaded successfully.")
 
+    # Remove rows for the mode "opencl32x16"
+    df = df[df["Mode"] != "opencl32x16"]
+    df = df[df["Mode"] != "opencl4x64"]
+    df = df[df["Mode"] != "opencl8x32"]
+    df = df[df["Mode"] != "opencl2x128"]
+
     # Dictionary to store computed image sizes keyed by image file path.
     image_sizes = {}
 
@@ -96,6 +103,12 @@ def analyze_csv():
         "axes.labelsize": 14
     })
 
+    # Set up a color map for different modes.
+    mode_colors = {'non-parallel': (np.float64(0.267004), np.float64(0.004874), np.float64(0.329415), np.float64(1.0)), 'opencl128': (np.float64(0.278826), np.float64(0.17549), np.float64(0.483397), np.float64(1.0)), 'opencl16x16': (np.float64(0.229739), np.float64(0.322361), np.float64(0.545706), np.float64(1.0)), 'opencl256': (np.float64(0.172719), np.float64(0.448791), np.float64(0.557885), np.float64(1.0)), 'opencl512': (np.float64(0.127568), np.float64(0.566949), np.float64(0.550556), np.float64(1.0)), 'opencl64': (np.float64(0.157851), np.float64(0.683765), np.float64(0.501686), np.float64(1.0)), 'opencl8x8': (np.float64(0.369214), np.float64(0.788888), np.float64(0.382914), np.float64(1.0)), 'opencv': (np.float64(0.678489), np.float64(0.863742), np.float64(0.189503), np.float64(1.0))}
+
+    print("Mode colors:", mode_colors)
+
+
     # -------------------------------------------------------------------------
     # Boxplot: Execution Time Distribution by Mode
     fig1, ax1 = plt.subplots(figsize=(8, 3))
@@ -112,7 +125,7 @@ def analyze_csv():
     ax1.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
     plt.suptitle("")
-    save_plot(fig1, "boxplot_execution_time_per_mode.png")
+    save_plot(fig1, "boxplot_execution_time_per_mode_mac.png")
 
     # -------------------------------------------------------------------------
     # Boxplot: Execution Time Distribution for OpenCL Modes
@@ -131,7 +144,7 @@ def analyze_csv():
     ax2.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
     ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha='right')
     plt.suptitle("")
-    save_plot(fig2, "boxplot_execution_time_opencl_modes.png")
+    save_plot(fig2, "boxplot_execution_time_opencl_modes_mac.png")
 
     # -------------------------------------------------------------------------
     # Bar Chart: Average Execution Time per Mode
@@ -140,7 +153,7 @@ def analyze_csv():
     fig3, ax3 = plt.subplots(figsize=(8, 3))
     avg_time_per_mode.plot(
         kind="bar",
-        color=[plt.cm.viridis(i / len(avg_time_per_mode)) for i in range(len(avg_time_per_mode))],
+        color=[mode_colors[mode] for mode in avg_time_per_mode.index],
         edgecolor="black",
         ax=ax3,
         zorder=3
@@ -148,14 +161,14 @@ def analyze_csv():
     ax3.set_xlabel("Mode")
     ax3.set_ylabel("Execution Time (s)")
     ax3.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig3, "barchart_avg_execution_time_per_mode.png")
+    save_plot(fig3, "barchart_avg_execution_time_per_mode_mac.png")
 
     # -------------------------------------------------------------------------
     # Bar Chart: Average Execution Time per Mode (Log Scale)
     fig4, ax4 = plt.subplots(figsize=(8, 3))
     avg_time_per_mode.plot(
         kind="bar",
-        color=[plt.cm.viridis(i / len(avg_time_per_mode)) for i in range(len(avg_time_per_mode))],
+        color=[mode_colors[mode] for mode in avg_time_per_mode.index],
         edgecolor="black",
         ax=ax4,
         zorder=3
@@ -164,7 +177,7 @@ def analyze_csv():
     ax4.set_xlabel("Mode")
     ax4.set_ylabel("Execution Time (s)")
     ax4.grid(axis='y', which='both', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig4, "barchart_avg_execution_time_per_mode_logscale.png")
+    save_plot(fig4, "barchart_avg_execution_time_per_mode_logscale_mac.png")
 
     # -------------------------------------------------------------------------
     # Bar Chart: Average Execution Time for OpenCL Modes
@@ -172,7 +185,7 @@ def analyze_csv():
     fig5, ax5 = plt.subplots(figsize=(8, 3))
     avg_time_opencl.plot(
         kind="bar",
-        color=[plt.cm.viridis(i / len(avg_time_opencl)) for i in range(len(avg_time_opencl))],
+        color=[mode_colors[mode] for mode in avg_time_opencl.index],
         edgecolor="black",
         ax=ax5,
         zorder=3
@@ -180,7 +193,7 @@ def analyze_csv():
     ax5.set_xlabel("Mode")
     ax5.set_ylabel("Execution Time (s)")
     ax5.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig5, "barchart_avg_execution_time_opencl_modes.png")
+    save_plot(fig5, "barchart_avg_execution_time_opencl_modes_mac.png")
 
     # -------------------------------------------------------------------------
     # Line Plot: Execution Time vs. Total Pixels by Mode
@@ -189,13 +202,13 @@ def analyze_csv():
         group_sorted = group.sort_values("TotalPixels")
         x = group_sorted["TotalPixels"]
         y = group_sorted["ExecutionTimeSeconds"]
-        color = plt.cm.viridis(i / len(df["Mode"].unique()))
+        color = mode_colors[mode]
         ax6.plot(x, y, label=mode, marker="o", color=color)
     ax6.set_xlabel("Total Pixels")
     ax6.set_ylabel("Execution Time (s)")
-    ax6.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
+    ax6.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.35), ncol=4, frameon=True)
     ax6.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig6, "lineplot_execution_time_vs_total_pixels.png")
+    save_plot(fig6, "lineplot_execution_time_vs_total_pixels_mac.png")
 
     # -------------------------------------------------------------------------
     # Line Plot: Execution Time vs. Total Pixels by Mode (Log Scale)
@@ -204,14 +217,14 @@ def analyze_csv():
         group_sorted = group.sort_values("TotalPixels")
         x = group_sorted["TotalPixels"]
         y = group_sorted["ExecutionTimeSeconds"]
-        color = plt.cm.viridis(i / len(df["Mode"].unique()))
+        color = mode_colors[mode]
         ax7.plot(x, y, label=mode, marker="o", color=color)
     ax7.set_yscale("log")
     ax7.set_xlabel("Total Pixels")
     ax7.set_ylabel("Execution Time (s)")
-    ax7.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
+    ax7.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.35), ncol=4, frameon=True)
     ax7.grid(color='lightgray', linestyle='-', linewidth=0.5, which='both', zorder=-1)
-    save_plot(fig7, "lineplot_execution_time_vs_total_pixels_logscale.png")
+    save_plot(fig7, "lineplot_execution_time_vs_total_pixels_logscale_mac.png")
 
     # -------------------------------------------------------------------------
     # Line Plot: Execution Time vs. Total Pixels for OpenCL Modes Only
@@ -220,13 +233,14 @@ def analyze_csv():
         group_sorted = group.sort_values("TotalPixels")
         x = group_sorted["TotalPixels"]
         y = group_sorted["ExecutionTimeSeconds"]
-        color = plt.cm.viridis(i / len(opencl_modes["Mode"].unique()))
+        color = mode_colors[mode]
         ax8.plot(x, y, label=mode, marker="o", color=color)
+    ax8.set_yscale("log")     
     ax8.set_xlabel("Total Pixels")
     ax8.set_ylabel("Execution Time (s)")
-    ax8.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.45), ncol=4, frameon=True)
+    ax8.legend(title="Mode", loc="upper center", bbox_to_anchor=(0.5, 1.35), ncol=4, frameon=True)
     ax8.grid(color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig8, "lineplot_execution_time_vs_total_pixels_opencl_modes.png")
+    save_plot(fig8, "lineplot_execution_time_vs_total_pixels_opencl_modes_mac.png")
 
     # -------------------------------------------------------------------------
     # Grouped Bar Chart: Average Execution Time by Image Category and Mode
@@ -246,7 +260,7 @@ def analyze_csv():
     ax9.set_ylabel("Execution Time (s)")
     ax9.legend(title="Mode")
     ax9.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig9, "grouped_barchart_execution_time_by_category.png")
+    save_plot(fig9, "grouped_barchart_execution_time_by_category_mac.png")
 
     # -------------------------------------------------------------------------
     # Grouped bar chart: Average execution time by image category for OpenCL modes.
@@ -269,7 +283,7 @@ def analyze_csv():
         loc="upper right", 
     )
     ax10.grid(axis='y', color='lightgray', linestyle='-', linewidth=0.5, zorder=-1)
-    save_plot(fig10, "grouped_barchart_execution_time_opencl_by_category.png")
+    save_plot(fig10, "grouped_barchart_execution_time_opencl_by_category_mac.png")
 
     # -------------------------------------------------------------------------
     # Heatmap: Execution Time by Category and Mode
@@ -286,7 +300,7 @@ def analyze_csv():
     ax11.set_xticklabels(heatmap_data.columns, rotation=45, ha="right")
     ax11.set_yticks(range(len(heatmap_data.index)))
     ax11.set_yticklabels(heatmap_data.index)
-    save_plot(fig11, "heatmap_execution_time_by_category_and_mode.png")
+    save_plot(fig11, "heatmap_execution_time_by_category_and_mode_mac.png")
 
     # -------------------------------------------------------------------------
     # Heatmap: Execution Time by Category for OpenCL Modes
@@ -300,7 +314,7 @@ def analyze_csv():
     ax12.set_xticklabels(heatmap_opencl_data.columns, rotation=45, ha="right")
     ax12.set_yticks(range(len(heatmap_opencl_data.index)))
     ax12.set_yticklabels(heatmap_opencl_data.index)
-    save_plot(fig12, "heatmap_execution_time_opencl_by_category_and_mode.png")
+    save_plot(fig12, "heatmap_execution_time_opencl_by_category_and_mode_mac.png")
 
 
 if __name__ == "__main__":
